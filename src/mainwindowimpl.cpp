@@ -5,10 +5,39 @@
 #include <X11/extensions/XTest.h>
 #include <unistd.h>
 #include <pulse/pulseaudio.h>
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <array>
+#include <algorithm>
+#include <functional>
+#include <cctype>
+#include <locale>
 
 #define XF86AudioPlay 0x1008ff14
 #define XF86AudioNext 0x1008ff17
 #define XF86AudioPrev 0x1008ff16
+
+// trim from start
+static inline std::string &ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+            std::not1(std::ptr_fun<int, int>(std::isspace))));
+    return s;
+}
+
+// trim from end
+static inline std::string &rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(),
+            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+    return s;
+}
+
+// trim from both ends
+static inline std::string &trim(std::string &s) {
+    return ltrim(rtrim(s));
+}
 
 /* Send Fake Key Event */
 static void SendKey (Display * disp, KeySym keysym, KeySym modsym)
@@ -72,11 +101,15 @@ MainWindowImpl::MainWindowImpl( QWidget * parent, Qt::WindowFlags f)
 
 void MainWindowImpl::continuePlay() {
     if ( joystick->connected != 1   ) {
-        qDebug("No reset. No Buzzer connected.");
+        qDebug("No Buzzer connected.");
     } else {
         for ( int i=0; i<=19; i++) {
             while( joystick->getButton(i) > 0 );
         }
+    }
+
+    if ( isSpotifyPlaying() ) {
+        playPause();
     }
 
     buttonIsHit = false;
@@ -121,29 +154,38 @@ void MainWindowImpl::updateForm() {
     button[2] = joystick->getButton(10);
     button[3] = joystick->getButton(15);
 
+    if ( button[0] > 0 ||
+         button[1] > 0 ||
+         button[2] > 0 ||
+         button[3] > 0 ) {
+        if ( !isSpotifyPlaying() ) {
+            return;
+        }
+    }
+
     if ( button[0] > 0 && greenButton->isEnabled()) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+        playPause();
         label->setText("Green");
         label->setStyleSheet("QLabel { background-color : green; color : black; }");
         buttonIsHit = true;
         timer->stop();
         return;
-    } else if ( button[1] > 0 && greenButton->isEnabled()) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+    } else if ( button[1] > 0 && yellowButton->isEnabled()) {
+        playPause();
         label->setText("Yellow");
         label->setStyleSheet("QLabel { background-color : yellow; color : black; }");
         buttonIsHit = true;
         timer->stop();
         return;
-    } else if ( button[2] > 0 && greenButton->isEnabled()) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+    } else if ( button[2] > 0 && blueButton->isEnabled()) {
+        playPause();
         label->setText("Blue");
         label->setStyleSheet("QLabel { background-color : blue; color : black; }");
         buttonIsHit = true;
         timer->stop();
         return;
-    } else if ( button[3] > 0 && greenButton->isEnabled()) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+    } else if ( button[3] > 0 && redButton->isEnabled()) {
+        playPause();
         label->setText("Red");
         label->setStyleSheet("QLabel { background-color : red; color : black; }");
         buttonIsHit = true;
@@ -161,26 +203,35 @@ void MainWindowImpl::keyPressEvent(QKeyEvent *event) {
         return;
     }
 
+    if ( event->key() == Qt::Key_1 ||
+         event->key() == Qt::Key_2 ||
+         event->key() == Qt::Key_3 ||
+         event->key() == Qt::Key_4 ) {
+        if ( !isSpotifyPlaying() ) {
+            return;
+        }
+    }
+
     if (event->key() == Qt::Key_1 && greenButton->isEnabled() ) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+        playPause();
         label->setText("Green");
         label->setStyleSheet("QLabel { background-color : green; color : black; }");
         buttonIsHit = true;
         timer->stop();
     } else if (event->key() == Qt::Key_2 && yellowButton->isEnabled() ) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+        playPause();
         label->setText("Yellow");
         label->setStyleSheet("QLabel { background-color : yellow; color : black; }");
         buttonIsHit = true;
         timer->stop();
     } else if (event->key() == Qt::Key_3 && blueButton->isEnabled() ) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+        playPause();
         label->setText("Blue");
         label->setStyleSheet("QLabel { background-color : blue; color : black; }");
         buttonIsHit = true;
         timer->stop();
     } else if (event->key() == Qt::Key_4 && redButton->isEnabled() ) {
-        SendKey (XOpenDisplay (NULL), XF86AudioPlay, 0);
+        playPause();
         label->setText("Red");
         label->setStyleSheet("QLabel { background-color : red; color : black; }");
         buttonIsHit = true;
@@ -231,3 +282,23 @@ void MainWindowImpl::greenButtonEnable() {
     greenButton->setEnabled(true);
     greenTimer->stop();
 }
+
+bool MainWindowImpl::isSpotifyPlaying() {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("pacmd list-sink-inputs | grep -c \'state: RUNNING\'", "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+
+    if ( trim(result).compare( "1" ) == 0 ) {
+        qDebug("Spotify is playing");
+        return true;
+    }
+    qDebug("Spotify is stopped/paused");
+    return false;
+}
+

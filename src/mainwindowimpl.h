@@ -21,6 +21,8 @@ public:
     QTimer *greenTimer;
 protected:
     void keyPressEvent(QKeyEvent *event);
+
+    bool isSpotifyPlaying();
 private slots:
     void updateForm();
     void joyConnect();

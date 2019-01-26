@@ -11,6 +11,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
     Q_OBJECT
 public:
     MainWindowImpl( QWidget * parent = 0, Qt::WindowFlags f = 0 );
+private:
     QTimer *timer;
     Joystick *joystick;
     bool buttonIsHit;
@@ -23,6 +24,7 @@ protected:
     void keyPressEvent(QKeyEvent *event);
 
     bool isSpotifyPlaying();
+    void playAlarm(QString Str, QString color);
 private slots:
     void updateForm();
     void joyConnect();

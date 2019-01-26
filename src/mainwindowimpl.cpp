@@ -1,5 +1,8 @@
 #include "mainwindowimpl.h"
 #include <QKeyEvent>
+#include <QGraphicsOpacityEffect>
+#include <QPropertyAnimation>
+#include <QtMultimedia/QSound>
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
 #include <X11/extensions/XTest.h>
@@ -164,33 +167,13 @@ void MainWindowImpl::updateForm() {
     }
 
     if ( button[0] > 0 && greenButton->isEnabled()) {
-        playPause();
-        label->setText("Green");
-        label->setStyleSheet("QLabel { background-color : green; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
-        return;
+        playAlarm(QString("Green"), QString("green"));
     } else if ( button[1] > 0 && yellowButton->isEnabled()) {
-        playPause();
-        label->setText("Yellow");
-        label->setStyleSheet("QLabel { background-color : yellow; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
-        return;
+        playAlarm(QString("Yellow"), QString("yellow"));
     } else if ( button[2] > 0 && blueButton->isEnabled()) {
-        playPause();
-        label->setText("Blue");
-        label->setStyleSheet("QLabel { background-color : blue; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
-        return;
+        playAlarm(QString("Blue"), QString("blue"));
     } else if ( button[3] > 0 && redButton->isEnabled()) {
-        playPause();
-        label->setText("Red");
-        label->setStyleSheet("QLabel { background-color : red; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
-        return;
+        playAlarm(QString("Red"), QString("red"));
     }
 }
 
@@ -213,35 +196,59 @@ void MainWindowImpl::keyPressEvent(QKeyEvent *event) {
     }
 
     if (event->key() == Qt::Key_1 && greenButton->isEnabled() ) {
-        playPause();
-        label->setText("Green");
-        label->setStyleSheet("QLabel { background-color : green; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
+        playAlarm(QString("Green"), QString("green"));
     } else if (event->key() == Qt::Key_2 && yellowButton->isEnabled() ) {
-        playPause();
-        label->setText("Yellow");
-        label->setStyleSheet("QLabel { background-color : yellow; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
+        playAlarm(QString("Yellow"), QString("yellow"));
     } else if (event->key() == Qt::Key_3 && blueButton->isEnabled() ) {
-        playPause();
-        label->setText("Blue");
-        label->setStyleSheet("QLabel { background-color : blue; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
+        playAlarm(QString("Blue"), QString("blue"));
     } else if (event->key() == Qt::Key_4 && redButton->isEnabled() ) {
-        playPause();
-        label->setText("Red");
-        label->setStyleSheet("QLabel { background-color : red; color : black; }");
-        buttonIsHit = true;
-        timer->stop();
+        playAlarm(QString("Red"), QString("red"));
     }
+}
+
+void MainWindowImpl::playAlarm(QString labelStr, QString colorStr) {
+    playPause();
+    label->setText(labelStr);
+    label->setStyleSheet(QString("QLabel { background-color : %1; color : black; }").arg(colorStr));
+    buttonIsHit = true;
+    timer->stop();
+
+    QSound::play("/home/krikar/dev/myGitHub/Buzzer/submarie-dive-horn.wav");
+
+    QGraphicsOpacityEffect *eff = new QGraphicsOpacityEffect(this);
+    label->setGraphicsEffect(eff);
+    QPropertyAnimation *a = new QPropertyAnimation(eff,"opacity");
+    a->setDuration(2000);
+    a->setStartValue(0);
+    a->setEndValue(1);
+    a->setEasingCurve(QEasingCurve::InBack);
+    a->start(QPropertyAnimation::DeleteWhenStopped);
 }
 
 void MainWindowImpl::yellowButtonClicked() {
     yellowButton->setEnabled(false);
     yellowTimer->start(10*1000);
+
+    auto            timer = new QTimer(this);
+    static float    value = 0.0f;
+
+    static QString styleSheetStr = yellowButton->styleSheet();
+    connect(timer, &QTimer::timeout, [&, timer]{
+        value += 0.1f;
+        yellowButton->setStyleSheet(QString("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,"
+                                            "stop:0 rgb(255, 255, 0), stop:%1 rgb(255, 255, 0),"
+                                            "stop:%2 rgb(91, 90, 84), stop:1 rgb(91, 90, 84));")
+                                      .arg(value-0.001f)
+                                      .arg(value));
+        if (value >= 1.0f) {
+            timer->stop();
+            timer->deleteLater();
+            yellowButton->setStyleSheet(styleSheetStr);
+            value = 0.0f;
+        }
+    });
+    timer->start(1000);
+
     continuePlay();
 }
 
@@ -253,6 +260,27 @@ void MainWindowImpl::yellowButtonEnable() {
 void MainWindowImpl::blueButtonClicked() {
     blueButton->setEnabled(false);
     blueTimer->start(10*1000);
+
+    auto            timer = new QTimer(this);
+    static float    value = 0.0f;
+
+    static QString styleSheetStr = yellowButton->styleSheet();
+    connect(timer, &QTimer::timeout, [&, timer]{
+        value += 0.1f;
+        blueButton->setStyleSheet(QString("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,"
+                                          "stop:0 rgb(0, 170, 255), stop:%1 rgb(0, 170, 255),"
+                                          "stop:%2 rgb(91, 90, 84), stop:1 rgb(91, 90, 84));")
+                                      .arg(value-0.001f)
+                                      .arg(value));
+        if (value >= 1.0f) {
+            timer->stop();
+            timer->deleteLater();
+            blueButton->setStyleSheet(styleSheetStr);
+            value = 0.0f;
+        }
+    });
+    timer->start(1000);
+
     continuePlay();
 }
 
@@ -264,6 +292,27 @@ void MainWindowImpl::blueButtonEnable() {
 void MainWindowImpl::redButtonClicked() {
     redButton->setEnabled(false);
     redTimer->start(10*1000);
+
+    auto            timer = new QTimer(this);
+    static float    value = 0.0f;
+
+    static QString styleSheetStr = yellowButton->styleSheet();
+    connect(timer, &QTimer::timeout, [&, timer]{
+        value += 0.1f;
+        redButton->setStyleSheet(QString("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,"
+                                         "stop:0 rgb(170, 0, 0), stop:%1 rgb(170, 0, 0),"
+                                         "stop:%2 rgb(91, 90, 84), stop:1 rgb(91, 90, 84));")
+                                      .arg(value-0.001f)
+                                      .arg(value));
+        if (value >= 1.0f) {
+            timer->stop();
+            timer->deleteLater();
+            redButton->setStyleSheet(styleSheetStr);
+            value = 0.0f;
+        }
+    });
+    timer->start(1000);
+
     continuePlay();
 }
 
@@ -275,6 +324,27 @@ void MainWindowImpl::redButtonEnable() {
 void MainWindowImpl::greenButtonClicked() {
     greenButton->setEnabled(false);
     greenTimer->start(10*1000);
+
+    auto            timer = new QTimer(this);
+    static float    value = 0.0f;
+
+    static QString styleSheetStr = yellowButton->styleSheet();
+    connect(timer, &QTimer::timeout, [&, timer]{
+        value += 0.1f;
+        greenButton->setStyleSheet(QString("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,"
+                                              "stop:0 rgb(85, 255, 127), stop:%1 rgb(85, 255, 127),"
+                                              "stop:%2 rgb(91, 90, 84), stop:1 rgb(91, 90, 84));")
+                                      .arg(value-0.001f)
+                                      .arg(value));
+        if (value >= 1.0f) {
+            timer->stop();
+            timer->deleteLater();
+            greenButton->setStyleSheet(styleSheetStr);
+            value = 0.0f;
+        }
+    });
+    timer->start(1000);
+
     continuePlay();
 }
 

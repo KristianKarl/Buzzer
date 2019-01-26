@@ -1,5 +1,5 @@
 TEMPLATE = app
-QT = gui core uitools
+QT = gui core uitools multimedia
 CONFIG += qt release warn_on console
 DESTDIR = bin
 OBJECTS_DIR = build
